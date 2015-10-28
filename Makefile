@@ -5,3 +5,6 @@ crtime: crtime.o
 
 test: crtime
 	./test.sh
+
+install: crtime
+	cp $< /usr/local/bin/
