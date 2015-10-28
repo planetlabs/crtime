@@ -39,13 +39,6 @@ static int open_filesystem(char *device)
     return 0;
 }
 
-int debugfs_read_inode_full(ext2_ino_t ino, struct ext2_inode * inode, int bufsize)
-{
-    int retval;
-
-    return ext2fs_read_inode_full(current_fs, ino, inode, bufsize);
-}
-
 int main(int argc, char *argv[]) {
 
     ext2_ino_t    inode;
