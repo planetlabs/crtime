@@ -1,0 +1,8 @@
+Package: crtime
+Version: {VERSION}
+Priority: optional
+Architecture: i386
+Depends: e2fslibs (>= 1.42)
+Maintainer: Brian Cavagnolo <brian@planet.com>
+Description: Get creation time of a file
+ Surprising how hard this is
