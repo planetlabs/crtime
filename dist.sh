@@ -15,4 +15,5 @@ make install
 DEBDIR=${PWD}/${NAME}/DEBIAN
 mkdir ${DEBDIR}
 sed 's/{VERSION}/'$VERSION'/g' < DEBIAN/control > ${DEBDIR}/control
+sed 's/{ARCH}/'$ARCH'/g' -i ${DEBDIR}/control
 dpkg-deb --build ${NAME}
