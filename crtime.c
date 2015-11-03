@@ -23,6 +23,7 @@
 #include <ext2fs/ext2fs.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 ext2_filsys current_fs;
 
@@ -121,6 +122,16 @@ fail:
     return -1;
 }
 
+int check_permissions(char *f) {
+    int retval;
+
+    retval = access(f, R_OK);
+    if (retval) {
+        perror(f);
+    }
+    return retval;
+}
+
 int main(int argc, char *argv[]) {
 
     ext2_ino_t inode;
@@ -132,6 +143,11 @@ int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: crtime <file>\n");
         return -1;
+    }
+
+    retval = check_permissions(argv[1]);
+    if (retval) {
+        return retval;
     }
 
     retval = get_inode(argv[1], &inode);
