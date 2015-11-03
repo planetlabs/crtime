@@ -59,30 +59,100 @@ static int get_inode(char *f, ext2_ino_t *inode) {
     return 0;
 }
 
+/* http://unix.stackexchange.com/questions/32795/what-is-the-maximum-allowed-filename-and-folder-size-with-ecryptfs */
+#define MAX_PATH 4096
+#define DF_COMMAND "/bin/df --output=source "
+
+/* NB: caller must call free on **fs on success */
+int get_fs_name(char *f, char **fs) {
+
+    FILE *fp = NULL;
+    char cmd[MAX_PATH + sizeof(DF_COMMAND) + 1];
+    int retval;
+    int l;
+
+    *fs = NULL;
+
+    retval = snprintf(cmd, sizeof(cmd), DF_COMMAND"%s", f);
+    if (retval >= sizeof(cmd) - 1) {
+        fprintf(stderr, "%s too long!", f);
+        goto fail;
+    }
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "Failed to run df command\n");
+        goto fail;
+    }
+
+    /* leave space for newline and space for null termination */
+    *fs = malloc(MAX_PATH + 2);
+    if (*fs == NULL) {
+        fprintf(stderr, "Failed to allocate memory for df output\n");
+        goto fail;
+    }
+
+    /* throw away the header */
+    if (fgets(*fs, MAX_PATH, fp) == NULL) {
+        fprintf(stderr, "Failed to read df header\n");
+        goto fail;
+    }
+
+    if (fgets(*fs, MAX_PATH, fp) == NULL) {
+        fprintf(stderr, "failed to read data from df\n");
+        goto fail;
+    }
+
+    l = strlen(*fs);
+    if ((*fs)[l - 1] != '\n') {
+        fprintf(stderr, "Did not find newline in df output.\n");
+        goto fail;
+    }
+    (*fs)[l - 1] = 0;
+
+    pclose(fp);
+    return 0;
+
+fail:
+    if (*fs)
+        free(*fs);
+    if (fp)
+        pclose(fp);
+    return -1;
+}
+
 int main(int argc, char *argv[]) {
 
     ext2_ino_t inode;
     struct ext2_inode *inode_buf;
     struct ext2_inode_large *large_inode;
     int retval;
+    char *fs;
 
-    if (argc != 3) {
-        fprintf(stderr, "Usage: crtime <filesystem> <file>\n");
+    if (argc != 2) {
+        fprintf(stderr, "Usage: crtime <file>\n");
         return -1;
     }
 
-    retval = get_inode(argv[2], &inode);
+    retval = get_inode(argv[1], &inode);
     if (retval) {
         return retval;
     }
 
-    retval = open_filesystem(argv[1]);
+    retval = get_fs_name(argv[1], &fs);
     if (retval) {
+        return retval;
+    }
+
+    retval = open_filesystem(fs);
+    if (retval) {
+        free(fs);
         return retval;
     }
 
     inode_buf = (struct ext2_inode *)malloc(EXT2_INODE_SIZE(current_fs->super));
     if (!inode_buf) {
+        free(fs);
         fprintf(stderr, "Failed to allocate memory\n");
         return -1;
     }
@@ -90,24 +160,29 @@ int main(int argc, char *argv[]) {
     retval = ext2fs_read_inode_full(current_fs, inode, inode_buf, EXT2_INODE_SIZE(current_fs->super));
     if (retval) {
         fprintf(stderr, "Failed to read inode\n");
+        free(fs);
         free(inode_buf);
         return retval;
     }
 
     if (EXT2_INODE_SIZE(current_fs->super) <= EXT2_GOOD_OLD_INODE_SIZE) {
+        free(fs);
+        free(inode_buf);
         fprintf(stderr, "Create time unavailable");
         return -1;
     }
 
     large_inode = (struct ext2_inode_large *)inode_buf;
-
     if (large_inode->i_extra_isize < 24) {
+        free(fs);
+        free(inode_buf);
         fprintf(stderr, "Create time unavailable");
         return -1;
     }
 
     printf("%d\n", large_inode->i_crtime);
 
+    free(fs);
     free(inode_buf);
     ext2fs_close(current_fs);
     return 0;
