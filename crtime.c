@@ -17,12 +17,12 @@
  *
  * To run:
  * target=/path/to/some/file
- * inode=$(ls -di "${target}" | cut -d ' ' -f 1);
  * fs=$(df "${target}"  | tail -1 | awk '{print $1}');
- * ./crtime ${fs} ${inode}
+ * ./crtime ${fs} ${target}
  */
 #include <ext2fs/ext2fs.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 ext2_filsys current_fs;
 
@@ -39,22 +39,41 @@ static int open_filesystem(char *device)
     return 0;
 }
 
+static int get_inode(char *f, ext2_ino_t *inode) {
+
+    struct stat sb;
+
+    if (stat(f, &sb) == -1) {
+        perror("stat");
+        return errno;
+    }
+
+    if ((sizeof(sb.st_ino) > sizeof(ext2_ino_t)) &&
+        (sb.st_ino > 0xffffffff)) {
+        fprintf(stderr,
+                "Inode of %s is bigger than what e2fslibs supports\n",
+                f);
+        return -1;
+    }
+    memcpy((void *)inode, (void *)&sb.st_ino, sizeof(ext2_ino_t));
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
 
-    ext2_ino_t    inode;
+    ext2_ino_t inode;
     struct ext2_inode *inode_buf;
     struct ext2_inode_large *large_inode;
     int retval;
 
     if (argc != 3) {
-        fprintf(stderr, "Usage: crtime <filesystem> <inode>\n");
+        fprintf(stderr, "Usage: crtime <filesystem> <file>\n");
         return -1;
     }
 
-    retval = sscanf(argv[2], "%d", &inode);
-    if (retval != 1) {
-        fprintf(stderr, "Could not parse an integer from %s\n", argv[2]);
-        return -1;
+    retval = get_inode(argv[2], &inode);
+    if (retval) {
+        return retval;
     }
 
     retval = open_filesystem(argv[1]);
