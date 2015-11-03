@@ -62,7 +62,7 @@ static int get_inode(char *f, ext2_ino_t *inode) {
 
 /* http://unix.stackexchange.com/questions/32795/what-is-the-maximum-allowed-filename-and-folder-size-with-ecryptfs */
 #define MAX_PATH 4096
-#define DF_COMMAND "/bin/df --output=source "
+#define DF_COMMAND "/bin/df "
 
 /* NB: caller must call free on **fs on success */
 int get_fs_name(char *f, char **fs) {
@@ -70,7 +70,7 @@ int get_fs_name(char *f, char **fs) {
     FILE *fp = NULL;
     char cmd[MAX_PATH + sizeof(DF_COMMAND) + 1];
     int retval;
-    int l;
+    char *first_space;
 
     *fs = NULL;
 
@@ -104,12 +104,15 @@ int get_fs_name(char *f, char **fs) {
         goto fail;
     }
 
-    l = strlen(*fs);
-    if ((*fs)[l - 1] != '\n') {
+    /* assume the drive name has no spaces (i.e., the first space is a
+     * delimiter)
+     */
+    first_space = strchr(*fs, ' ');
+    if (!first_space) {
         fprintf(stderr, "Did not find newline in df output.\n");
         goto fail;
     }
-    (*fs)[l - 1] = 0;
+    *first_space = 0;
 
     pclose(fp);
     return 0;
