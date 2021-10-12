@@ -1,0 +1,19 @@
+Source: crtime
+Section: utils
+Priority: optional
+Maintainer: Brian Cavagnolo <brian@planet.com>
+Build-Depends:
+ debhelper (>=11~),
+ dh-autoreconf,
+ build-essential,
+ git-buildpackage,
+ e2fslibs-dev (>= 1.42) | libext2fs-dev
+Standards-Version: 4.1.4
+Homepage: https://github.com/planetlabs/crtime
+
+Package: crtime
+Architecture: any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}, e2fslibs (>= 1.42) | libext2fs
+Description: Get creation time of a file
+ Surprising how hard this is
