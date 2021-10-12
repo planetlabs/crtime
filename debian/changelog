@@ -1,2 +1,18 @@
 crtime (0) UNRELEASED; urgency=medium
 
+  [ Brian Cavagnolo ]
+  * add initial crtime utility
+  * add install target
+  * add auto makefile and configure
+  * add automake artifacts
+  * remove superfluous code
+  * add more autoconf artifacts
+  * version bump
+  * add packaging
+  * look up the inode so user does not have to
+  * look up fs name for user so they do not have to provide it
+  * fail if caller does not have read permission on file
+  * do not rely on df --output option
+  * set arch correctly
+
+ -- David Tulloh <davidtulloh@berliner205>  Tue, 12 Oct 2021 18:36:23 +1100
