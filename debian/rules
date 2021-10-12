@@ -8,5 +8,8 @@ export DH_VERBOSE = 1
 %:
 	dh $@ --with autoreconf 
 
+# Should get this working at some point
+override_dh_auto_test:
+
 #override_dh_install:
 #	dh_install --list-missing -X.la -X.pyc -X.pyo
