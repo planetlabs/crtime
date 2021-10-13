@@ -1,0 +1,41 @@
+# Run when we create a new release/tag
+on:
+  push:
+    tags:
+      - '*'
+
+name: Release process
+
+env:
+  SOURCE_DIR: ./
+  ARTIFACTS_DIR: debian/build/release/
+
+jobs:
+  create-deb:
+    name: Create deb
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          path: source
+      - name: Install needed packages
+        run: sudo apt-get update && sudo apt-get install -y devscripts equivs git-buildpackage build-essential
+        env:
+          DEBIAN_FRONTEND: "noninteractive"
+      - name: Install build packages
+        run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
+        working-directory: source
+        env:
+          DEBIAN_FRONTEND: "noninteractive"
+      - name: Update the changelog
+        run: set -o allexport; source /etc/os-release; gbp dch --release --new-version=${GITHUB_REF##*/} --distribution=$VERSION_CODENAME --spawn-editor=never
+        working-directory: source
+      - name: Build Debian package
+        run: debuild --no-sign
+        working-directory: source
+      - name: Upload the artifacts
+        run: ls -lh
+
