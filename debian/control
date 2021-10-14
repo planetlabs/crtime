@@ -3,7 +3,7 @@ Section: utils
 Priority: optional
 Maintainer: Brian Cavagnolo <brian@planet.com>
 Build-Depends:
- debhelper (>=11~),
+ debhelper,
  dh-autoreconf,
  e2fslibs-dev (>= 1.42) | libext2fs-dev
 Standards-Version: 4.1.4

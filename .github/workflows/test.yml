@@ -1,0 +1,69 @@
+# Run when we create a new github release
+---
+on: push
+
+name: Test process
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  create-debs:
+    name: Run tests
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - ubuntu:14.04
+          - debian:testing
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container }}
+      options: --privileged
+    steps:
+      - name: Drop environment details for debugging
+        run: |
+          echo "::group::environment variables"
+          env
+          echo "::endgroup::"
+          echo "::group::os-release"
+          cat /etc/os-release
+          echo "::endgroup::"
+      - name: Get OS details
+        id: os
+        run: |
+          set -o allexport
+          source /etc/os-release
+          echo "::set-output name=distribution::$ID"
+          echo "::set-output name=version::${VERSION_ID}"
+          [[ $VERSION_ID == "14.04" ]] && VERSION_CODENAME=trusty
+          [[ $PRETTY_NAME == *bookworm* ]] && VERSION_CODENAME=bookworm
+          echo "::set-output name=codename::${VERSION_CODENAME}"
+      - name: Install required build environment packages
+        run: |
+          apt-get update
+          apt-get install --yes libc6-dev gcc make autoconf automake sudo e2fslibs-dev
+        env:
+          DEBIAN_FRONTEND: "noninteractive"
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Compile
+        run: autoreconf --verbose --install --force && ./configure && make
+      - name: Prepare system for tests
+        # Need to run as a non-root user who can run sudo
+        # Need to run on an ext[234] filesystem
+        run: |
+            useradd testuser -G sudo
+            echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+            chown -R testuser .
+            dd if=/dev/zero of=loopfile bs=1M count=10
+            losetup -f loopfile
+            mkfs.ext4 -F loopfile
+            mkdir testdir
+            mount -o loop loopfile testdir
+      - name: Run the tests
+        run: sudo --preserve-env --user=testuser make test
+        env:
+          USE_SUDO_FOR_TESTS: 1
+          TEST_DIR: testplay

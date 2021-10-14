@@ -1,41 +1,97 @@
-# Run when we create a new release/tag
+# Run when we create a new github release
+---
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [created]
 
 name: Release process
 
-env:
-  SOURCE_DIR: ./
-  ARTIFACTS_DIR: debian/build/release/
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  create-deb:
-    name: Create deb
+  create-debs:
+    name: Create debian release
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - ubuntu:14.04
+          - ubuntu:16.04
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - debian:testing
     runs-on: ubuntu-latest
-    outputs:
-      release-id: ${{ steps.create_release.outputs.id }}
+    container: ${{ matrix.container }}
     steps:
+      - name: Drop environment details for debugging
+        run: |
+          echo "::group::environment variables"
+          env
+          echo "::endgroup::"
+          echo "::group::os-release"
+          cat /etc/os-release
+          echo "::endgroup::"
+      - name: Get OS details
+        id: os
+        run: |
+            set -o allexport
+            source /etc/os-release
+            echo "::set-output name=distribution::$ID"
+            echo "::set-output name=version::${VERSION_ID}"
+            [[ $VERSION_ID == "14.04" ]] && VERSION_CODENAME=trusty
+            [[ $PRETTY_NAME == *bookworm* ]] && VERSION_CODENAME=bookworm
+            echo "::set-output name=codename::${VERSION_CODENAME}"
+      - name: Enable source repositories
+        run: sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
+      - name: Install pre-build packages
+        run: |
+            apt-get update
+            apt-get install -y devscripts equivs git-buildpackage build-essential software-properties-common
+        env:
+          DEBIAN_FRONTEND: "noninteractive"
+      # checkout action requires git to be installed and >= 2.18 or it gets weird
+      - name: Install recent git
+        run: |
+              [[ $DISTRO == ubuntu ]] && add-apt-repository --yes ppa:git-core/ppa
+              apt-get update && apt-get install -y git
+              git --version
+        env:
+          DEBIAN_FRONTEND: "noninteractive"
+          DISTRO: ${{ steps.os.outputs.distribution }}
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           path: source
-      - name: Install needed packages
-        run: sudo apt-get update && sudo apt-get install -y devscripts equivs git-buildpackage build-essential
-        env:
-          DEBIAN_FRONTEND: "noninteractive"
       - name: Install build packages
-        run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
+        run: mk-build-deps --install
+               --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes'
+               debian/control
         working-directory: source
         env:
           DEBIAN_FRONTEND: "noninteractive"
       - name: Update the changelog
-        run: set -o allexport; source /etc/os-release; gbp dch --release --new-version=${GITHUB_REF##*/} --distribution=$VERSION_CODENAME --spawn-editor=never
+        run: |
+            [[ $GITHUB_REF == *tags* ]] && VER_OPT="--new-version=${GITHUB_REF##*/}" #"
+            # --auto required for trusty/xenial (< 0.9.3)
+            gbp dch --auto --release $VER_OPT --distribution=$CODENAME --spawn-editor=never --ignore-branch
+        env:
+          CODENAME: ${{ steps.os.outputs.codename }}
         working-directory: source
       - name: Build Debian package
-        run: debuild --no-sign
+        # trusty/xenial don't support --no-sign, or long sign options
+        run: debuild -us -uc
         working-directory: source
-      - name: Upload the artifacts
-        run: ls -lh
+      - name: Rename the output files
+        run: |
+            find . -maxdepth 1 -name 'crtime*' -type f -exec bash -c 'mv -v {} $(echo {} | sed "s/crtime/crtime-$CODENAME/")' \;
+        env:
+          CODENAME: ${{ steps.os.outputs.codename }}
 
+      - name: Upload the artifacts to the release
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "crtime*"

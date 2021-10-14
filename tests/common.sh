@@ -3,7 +3,8 @@ CRTIME=${BASE}/crtime
 
 # The TEST_DIR must be in the filesystem under test. For now, we just assume
 # that the filesystem under test is right here where the source is checked out.
-TEST_DIR=${BASE}/.test
+# But we let the caller override it in case they need to
+[[ $TEST_DIR ]] || TEST_DIR=${BASE}/.test
 
 function fail {
     echo "FAIL: $*"
