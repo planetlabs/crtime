@@ -1,6 +1,5 @@
-crtime (0.02) unstable; urgency=medium
+crtime (0.04) unstable; urgency=medium
 
-  [ Brian Cavagnolo ]
   * add initial crtime utility
   * add install target
   * add auto makefile and configure
@@ -15,4 +14,4 @@ crtime (0.02) unstable; urgency=medium
   * do not rely on df --output option
   * set arch correctly
 
- -- David Tulloh <david.tulloh@planet.com>  Tue, 12 Oct 2021 18:36:23 +1100
+ -- Brian Cavagnolo <brian@planet.com>  Tue, 12 Oct 2021 18:36:23 +0000
