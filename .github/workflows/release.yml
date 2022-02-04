@@ -78,6 +78,7 @@ jobs:
             gbp dch --auto --release $VER_OPT --distribution=$CODENAME --spawn-editor=never --ignore-branch
         env:
           CODENAME: ${{ steps.os.outputs.codename }}
+          EMAIL: brian@planet.com
         working-directory: source
       - name: Build Debian package
         # trusty/xenial don't support --no-sign, or long sign options
