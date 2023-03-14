@@ -21,6 +21,8 @@ jobs:
           - ubuntu:16.04
           - ubuntu:18.04
           - ubuntu:20.04
+          - ubuntu:22.04
+          - debian:stable
           - debian:testing
     runs-on: ubuntu-latest
     container: ${{ matrix.container }}
