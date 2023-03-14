@@ -43,8 +43,6 @@ jobs:
             [[ $VERSION_ID == "14.04" ]] && VERSION_CODENAME=trusty
             [[ $PRETTY_NAME == *bookworm* ]] && VERSION_CODENAME=bookworm
             echo "::set-output name=codename::${VERSION_CODENAME}"
-      - name: Enable source repositories
-        run: sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
       - name: Install pre-build packages
         run: |
             apt-get update
